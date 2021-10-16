@@ -1,0 +1,29 @@
+version: "3.7"
+services:
+  service:
+    image: image-resize
+    environment:
+      PORT: 3000
+      NODE_ENV: Production
+      CACHE_DURATION_IN_MINUTES: 120
+      USE_REDIS_CACHE: "true"
+      REDIS_HOST: redis
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./.resize/static:/app/.resize/static
+
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+
+  gate:
+    image: nginx
+    ports:
+      - 80:80
+    depends_on:
+      - service
+    volumes:
+      - ./config/nginx:/etc/nginx/conf.d:ro

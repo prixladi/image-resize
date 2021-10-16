@@ -28,6 +28,7 @@
     "@nestjs/swagger": "^5.1.0",
     "class-transformer": "^0.4.0",
     "class-validator": "^0.13.1",
+    "nestjs-redis": "git+https://github.com/skunight/nestjs-redis.git",
     "path": "^0.12.7",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",

@@ -35,3 +35,6 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 .resize/*
+!.resize/static
+.resize/static/*
+!.resize/static/.gitkeep

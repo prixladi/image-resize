@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Header,
   Param,
   Query,
   Res,
@@ -10,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { FileService } from 'src/services/file.service';
 import { ResizeService } from '../services/resize.service';
-import e, { Response } from 'express';
+import { Response } from 'express';
 import { Readable } from 'stream';
 import { ResizeDto, ResizeDtoBase } from 'src/dtos/resizeDto';
 import {
@@ -21,6 +20,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CacheService } from 'src/services/cache.service';
+import { FileResult, Format } from 'src/services/types';
 
 const fileSchema = {
   schema: {
@@ -52,22 +52,24 @@ export class ResizeController {
     @Query() dto: ResizeDtoBase,
     @Res() res: Response,
   ) {
-    let result: Buffer;
+    let result: FileResult;
 
     const cached = await this.cacheService.tryGetCached(path, dto);
     if (cached) {
       result = cached;
     } else {
-      result = await this.fileService.GetStaticFile(path);
-      if (!result) {
+      const file = await this.fileService.GetStaticFile(path, dto.format);
+      if (!file) {
         return res.status(404).end();
       }
 
-      result = await this.resizeService.resize(result, dto);
+      dto = { ...dto, format: file.format };
+      result = await this.resizeService.resize(file.buffer, dto);
       this.cacheService.setCached(path, result, dto);
     }
 
-    const stream = Readable.from(result);
+    this.setContentType(result.format, res);
+    const stream = Readable.from(result.buffer);
     stream.pipe(res);
   }
 
@@ -81,22 +83,41 @@ export class ResizeController {
   @ApiBadRequestResponse({ description: 'Model is not valid' })
   @ApiOkResponse(fileSchema)
   async resizeUrl(@Query() dto: ResizeDto, @Res() res: Response) {
-    let result: Buffer;
+    let result: FileResult;
 
     const cached = await this.cacheService.tryGetCached(dto.url, dto);
     if (cached) {
       result = cached;
     } else {
-      result = await this.fileService.GetFileByUrl(dto.url);
-      if (!result) {
+      const file = await this.fileService.GetFileByUrl(dto.url, dto.format);
+      if (!file) {
         return res.status(400).end();
       }
 
-      result = await this.resizeService.resize(result, dto);
+      dto = { ...dto, format: file.format };
+      result = await this.resizeService.resize(file.buffer, dto);
       this.cacheService.setCached(dto.url, result, dto);
     }
 
-    const stream = Readable.from(result);
+    this.setContentType(result.format, res);
+    const stream = Readable.from(result.buffer);
     stream.pipe(res);
+  }
+
+  private setContentType(format: Format, res: Response) {
+    switch (format) {
+      case 'svg':
+        res.setHeader('Content-Type', `image/svg+xmp`);
+        break;
+      case 'jpg':
+      case 'jpe':
+      case 'jpeg':
+        res.setHeader('Content-Type', `image/jpeg`);
+        break;
+      default:
+        if (format) {
+          res.setHeader('Content-Type', `image/${format}`);
+        }
+    }
   }
 }

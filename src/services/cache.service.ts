@@ -1,40 +1,44 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { existsSync } from 'fs';
-import { readFile, writeFile, stat, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { createHash } from 'crypto';
+import { RedisService } from 'nestjs-redis';
+import { cacheDurationInMinutes, useRedisCache } from 'src/config';
+import { ResizeDtoBase } from 'src/dtos/resizeDto';
+import { FileResult, Format } from './types';
 
-type Domensions = {
-  width?: number;
-  height?: number;
-};
+type Cached = {
+  buffer: string,
+  format: Format
+}
 
 @Injectable()
 export class CacheService {
   private readonly logger = new Logger(CacheService.name);
-  private readonly cachePath = process.env.CACHE_PATH || './.resize/cache';
-  private readonly cacheDurationInMinutes = process.env
-    .CACHE_DURATION_IN_MINUTES
-    ? Number(process.env.CACHE_DURATION_IN_MINUTES)
-    : 120;
+
+  constructor(private readonly redisService: RedisService) {}
 
   async tryGetCached(
     path: string,
-    dimensions: Domensions,
-  ): Promise<Buffer | null> {
-    try {
-      const dir = this.getDirectory(path);
-      const fullPath = this.getPath(dir, dimensions);
+    dto: ResizeDtoBase,
+  ): Promise<FileResult | null> {
+    if (!useRedisCache) {
+      return null;
+    }
 
-      if (existsSync(fullPath)) {
-        const ago = new Date(
-          Date.now() - 1000 * 60 * this.cacheDurationInMinutes,
-        );
-        const st = await stat(fullPath);
-        if (st.birthtime >= ago) {
-          return await readFile(fullPath);
-        }
+    try {
+      const client = this.redisService.getClient();
+
+      const key = this.getKey(path, dto);
+      const cache = await client.get(key);
+      if (!cache) {
+        return null;
       }
+
+      const cached = JSON.parse(cache) as Cached;
+
+      return  {
+        format: cached.format,
+        buffer: Buffer.from(cached.buffer)
+      };
     } catch (err) {
       this.logger.error(err);
     }
@@ -44,38 +48,34 @@ export class CacheService {
 
   async setCached(
     path: string,
-    buffer: Buffer,
-    dimensions: Domensions,
+    res: FileResult,
+    dto: ResizeDtoBase,
   ): Promise<void> {
-    try {
-      const dir = this.getDirectory(path);
-      this.ensureExists(dir);
-      const fullPath = this.getPath(dir, dimensions);
+    if (!useRedisCache) {
+      return;
+    }
 
-      await writeFile(fullPath, buffer);
+    try {
+      const client = this.redisService.getClient();
+
+      const key = this.getKey(path, dto);
+      const value = JSON.stringify(res); 
+
+      await client.set(key, value, 'ex', 60 * cacheDurationInMinutes);
     } catch (err) {
       this.logger.error(err);
     }
   }
 
-  private async ensureExists(path: string) {
-    if (!existsSync(path)) {
-      await mkdir(path, { recursive: true });
-    }
-  }
-
-  private getPath(path: string, dimensions: Domensions) {
-    const fileName = `${dimensions.width ?? 'full'}x${
-      dimensions.height ?? 'full'
-    }`;
-    return join(path, fileName);
-  }
-
-  private getDirectory(path: string) {
+  private getKey(path: string, dto: ResizeDtoBase) {
     const hashFunction = createHash('SHA256');
     hashFunction.update(path);
     const hash = hashFunction.digest('base64').replace('/', '_');
 
-    return join(this.cachePath, `${hash}`);
+    const fileName = `${dto.width ?? 'full'}x${
+      dto.height ?? 'full'
+    }.${dto.format ?? 'dat'}`;
+
+    return `${hash}-${fileName}`;
   }
 }
