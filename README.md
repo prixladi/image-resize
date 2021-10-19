@@ -4,7 +4,7 @@ Web api for resizing images using [Sharp](https://github.com/lovell/sharp) libra
 
 ## Routes
 
-For endpoint, documentation is used swagger available on **/swagger/** route.
+For endpoint documentation there is swagger available on **/swagger/** route after starting the app.
 
 ## Env variables
 
