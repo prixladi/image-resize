@@ -21,7 +21,7 @@ In development mode, you can start the application using `yarn dev` command. If 
 
 For production release you can use for example docker container, you can find an example in `docker-compose.yml` file where you can find the service itself with static folder mapped to `.resize/static` folder, Redis container without mapped volume, and even nginx with configuration in `config/nginx` folder.
 
-## Isn't nestjs overkill for such a small app?
+## Isn't NestJS overkill for such a small app?
 
 Yes, it is right now. But this is just a prototype and there are more planned features for the future.
 
