@@ -10,10 +10,10 @@ For endpoint documentation there is swagger available on **/swagger/** route aft
 
 | Name  | Data type | Description  | Deafult |
 |---|---|---|---|
-| USE_REDIS_CACHE | boolean | Flag whether to you Redis caching for resized images or not | false |
+| USE_REDIS_CACHE | boolean | Flag whether to use Redis caching for resized images or not | false |
 | CACHE_DURATION_IN_MINUTES | number |  Duration of redis cached | 120 | 
-|  REDIS_HOST | string | Host of Redis | localhost | 
-|  REDIS_PORT | number| Port of Redis | 6379 |
+|  REDIS_HOST | string |  Redis host | localhost | 
+|  REDIS_PORT | number| Redis port | 6379 |
 
 ## Running application
 
