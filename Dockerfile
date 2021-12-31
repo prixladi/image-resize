@@ -3,8 +3,9 @@ RUN apk add --no-cache git
 
 WORKDIR /app
 COPY package.json yarn.lock ./
-COPY . .
 RUN yarn install
+
+COPY . .
 RUN yarn build
 
 FROM node:16-alpine3.12 as final
